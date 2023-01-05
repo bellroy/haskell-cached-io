@@ -1,6 +1,8 @@
 module Control.Concurrent.CachedIO (
     cachedIO,
-    cachedIOWith
+    cachedIOWith,
+    cachedIO',
+    cachedIOWith'
     ) where
 
 import Control.Concurrent.STM (atomically, newTVar, readTVar, writeTVar, retry, TVar)
@@ -23,6 +25,18 @@ cachedIO :: (MonadIO m, MonadIO t, MonadCatch t)
          -> m (t a)
 cachedIO interval = cachedIOWith (secondsPassed interval)
 
+-- | Cache an IO action, producing a version of this IO action that is cached
+-- for 'interval' seconds. The cache begins uninitialized.
+--
+-- The outer IO is responsible for setting up the cache. Use the inner one to
+-- either get the cached value or refresh, if the cache is older than 'interval'
+-- seconds.
+cachedIO' :: (MonadIO m, MonadIO t, MonadCatch t)
+          => NominalDiffTime -- ^ Number of seconds before refreshing cache
+          -> (Maybe (UTCTime, a) -> t a) -- ^ IO action to cache
+          -> m (t a)
+cachedIO' interval = cachedIOWith' (secondsPassed interval)
+
 -- | Check if @starting time@ + @seconds@ is after @end time@
 secondsPassed :: NominalDiffTime  -- ^ Seconds
                -> UTCTime         -- ^ Start time
@@ -39,9 +53,23 @@ cachedIOWith
     => (UTCTime -> UTCTime -> Bool) -- ^ Test function:
     --   If 'isCacheStillFresh' 'lastUpdated' 'now' returns 'True'
     --   the cache is considered still fresh and returns the cached IO action
-    -> t a                          -- ^ action to cache
+    -> t a -- ^ action to cache.
     -> m (t a)
-cachedIOWith isCacheStillFresh io = do
+cachedIOWith f io = cachedIOWith' f (const io)
+
+-- | Cache an IO action, The cache begins uninitialized.
+--
+-- The outer IO is responsible for setting up the cache. Use the inner one to
+-- either get the cached value or refresh
+cachedIOWith'
+    :: (MonadIO m, MonadIO t, MonadCatch t)
+    => (UTCTime -> UTCTime -> Bool) -- ^ Test function:
+    --   If 'isCacheStillFresh' 'lastUpdated' 'now' returns 'True'
+    --   the cache is considered still fresh and returns the cached IO action
+    -> (Maybe (UTCTime, a) -> t a) -- ^ action to cache. The stale value and its refresh date
+    -- are passed so that the action can perform external staleness checks
+    -> m (t a)
+cachedIOWith' isCacheStillFresh io = do
   cachedT <- liftIO (atomically (newTVar Uninitialized))
   return $ do
     now <- liftIO getCurrentTime
@@ -67,7 +95,10 @@ cachedIOWith isCacheStillFresh io = do
         Initializing -> retry
   where
     refreshCache previousState cachedT = do
-      newValue <- io `onException` restoreState previousState cachedT
+      let previous = case previousState of
+            Fresh lastUpdated value -> Just (lastUpdated, value)
+            _                       -> Nothing
+      newValue <- io previous `onException` restoreState previousState cachedT
       now <- liftIO getCurrentTime
       liftIO (atomically (writeTVar cachedT (Fresh now newValue)))
       liftIO (return newValue)
