@@ -33,7 +33,8 @@ cachedIO interval = cachedIOWith (secondsPassed interval)
 -- seconds.
 cachedIO' :: (MonadIO m, MonadIO t, MonadCatch t)
           => NominalDiffTime -- ^ Number of seconds before refreshing cache
-          -> (Maybe (UTCTime, a) -> t a) -- ^ IO action to cache
+          -> (Maybe (UTCTime, a) -> t a) -- ^ action to cache. The stale value and its refresh date
+          -- are passed so that the action can perform external staleness checks
           -> m (t a)
 cachedIO' interval = cachedIOWith' (secondsPassed interval)
 
