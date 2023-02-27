@@ -15,7 +15,7 @@ description:
 license:             Apache-2.0
 license-file:        LICENSE
 author:              SumAll, Inc.
-maintainer:          eglassercamp@sumall.com
+maintainer:          Bellroy Tech Team <haskell@bellroy.com>
 -- copyright:
 category:            Development
 build-type:          Simple
@@ -24,7 +24,7 @@ cabal-version:       >=1.10
 
 source-repository head
   type: git
-  location:  git://github.com:SumAll/haskell-cached-io.git
+  location:  git://github.com:bellroy/haskell-cached-io.git
 
 library
   exposed-modules:     Control.Concurrent.CachedIO
