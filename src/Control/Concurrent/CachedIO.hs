@@ -1,3 +1,18 @@
+-- | Example usage:
+--
+-- > -- Downloads a large payload from an external data store.
+-- > downloadData :: IO ByteString
+-- >
+-- > cachedDownloadData :: IO ByteString
+-- > cachedDownloadData = cachedIO (secondsToNominalDiffTime 600) downloadData
+--
+-- The first time @cachedDownloadData@ is called, it calls @downloadData@,
+-- stores the result, and returns it. If it is called again:
+--
+-- * before 10 minutes have passed, it returns the stored value.
+-- * after 10 minutes have passed, it calls @downloadData@ and stores the
+-- result again.
+--
 module Control.Concurrent.CachedIO (
     cachedIO,
     cachedIOWith,
@@ -12,6 +27,8 @@ import Control.Monad.IO.Class (liftIO, MonadIO)
 import Data.Time.Clock (NominalDiffTime, addUTCTime, getCurrentTime, UTCTime)
 
 data State a  = Uninitialized | Initializing | Updating a | Fresh UTCTime a
+
+
 
 -- | Cache an IO action, producing a version of this IO action that is cached
 -- for 'interval' seconds. The cache begins uninitialized.
