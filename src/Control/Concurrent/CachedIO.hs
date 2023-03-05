@@ -28,8 +28,6 @@ import Data.Time.Clock (NominalDiffTime, addUTCTime, getCurrentTime, UTCTime)
 
 data State a  = Uninitialized | Initializing | Updating a | Fresh UTCTime a
 
-
-
 -- | Cache an IO action, producing a version of this IO action that is cached
 -- for 'interval' seconds. The cache begins uninitialized.
 --
