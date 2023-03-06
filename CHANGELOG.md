@@ -11,6 +11,6 @@ version.
 - `cachedIO ttl f` can now be run in a different monad to `f`. Similarly for `cachedIO'`, `cachedIOWith`, `cachedIOWith'`.
 - Fixes uncaught exceptions leaving the cache in a deadlocked state and other problems.
 
-## 1.1.0.0 and before
+## 1.1.0.0 and prior
 
 These versions were published by @glasserc.
