@@ -1,7 +1,8 @@
+*.*~
+.direnv
+.envrc
 /.cabal-sandbox
+/.stack-work
 /cabal.sandbox.config
 /dist
-*.*~
-/.stack-work
 /dist-newstyle
-.direnv
