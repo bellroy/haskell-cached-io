@@ -31,6 +31,7 @@
             buildInputs = oldAttrs.buildInputs
               ++ [ pkgs.nixpkgs-fmt ]
               ++ (with pkgs.haskellPackages; [
+              haskell-language-server
               cabal-fmt
               cabal-install
               doctest
