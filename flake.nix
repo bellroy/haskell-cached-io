@@ -15,10 +15,12 @@
       {
         # This becomes the list of package and devShell names.
         supportedCompilers = [
-          "ghc884"
-          "ghc8107"
-          "ghc902"
-          "ghc926"
+          "ghc88"
+          "ghc810"
+          "ghc90"
+          "ghc92"
+          "ghc94"
+          "ghc96"
         ];
 
         packages = builtins.listToAttrs (
@@ -46,6 +48,6 @@
           packages
         );
 
-        devShells = devShells' // { default = devShells'.ghc926; };
+        devShells = devShells' // { default = devShells'.ghc92; };
       });
 }
