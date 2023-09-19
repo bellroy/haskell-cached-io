@@ -16,7 +16,7 @@ crawlTheInternet = do
 searchEngine :: String -> Cached IO [String] -> IO [String]
 searchEngine query internet = do
     pages <- runCached internet
-    return $ filter ( query `isInfixOf`) pages
+    return $ filter (query `isInfixOf`) pages
 
 main :: IO ()
 main = do
