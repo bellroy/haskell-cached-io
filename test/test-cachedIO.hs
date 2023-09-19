@@ -2,7 +2,7 @@ module Main (
     main
     ) where
 
-import Control.Concurrent.CachedIO (cachedIO)
+import Control.Concurrent.CachedIO (cachedIO, Cached(..))
 import Data.List (isInfixOf)
 
 crawlTheInternet :: IO [String]
@@ -13,10 +13,10 @@ crawlTheInternet = do
     return ["website about Haskell", "website about Ruby", "slashdot.org",
             "The Monad.Reader", "haskellwiki"]
 
-searchEngine :: String -> IO [String] -> IO [String]
+searchEngine :: String -> Cached IO [String] -> IO [String]
 searchEngine query internet = do
-    pages <- internet
-    return $ filter (query `isInfixOf`) pages
+    pages <- runCached internet
+    return $ filter ( query `isInfixOf`) pages
 
 main :: IO ()
 main = do

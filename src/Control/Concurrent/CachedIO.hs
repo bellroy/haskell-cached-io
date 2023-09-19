@@ -3,7 +3,7 @@
 -- > -- Downloads a large payload from an external data store.
 -- > downloadData :: IO ByteString
 -- >
--- > cachedDownloadData :: IO ByteString
+-- > cachedDownloadData :: IO (Cached IO ByteString)
 -- > cachedDownloadData = cachedIO (secondsToNominalDiffTime 600) downloadData
 --
 -- The first time @cachedDownloadData@ is called, it calls @downloadData@,
@@ -14,6 +14,7 @@
 -- result again.
 --
 module Control.Concurrent.CachedIO (
+    Cached(..),
     cachedIO,
     cachedIOWith,
     cachedIO',
@@ -26,6 +27,11 @@ import Control.Monad.Catch (MonadCatch, onException)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import Data.Time.Clock (NominalDiffTime, addUTCTime, getCurrentTime, UTCTime)
 
+-- | A cached IO action in some monad @m@. Use 'runCached' to extract the action when you want to query it.
+--
+-- This newtype is intended to make it harder to accidentally 'Control.Monad.join' (and defeat all caching) when the fetch action and the outer monad are the same.
+newtype Cached t a = Cached {runCached :: t a}
+
 data State a  = Uninitialized | Initializing | Updating a | Fresh UTCTime a
 
 -- | Cache an IO action, producing a version of this IO action that is cached
@@ -37,7 +43,7 @@ data State a  = Uninitialized | Initializing | Updating a | Fresh UTCTime a
 cachedIO :: (MonadIO m, MonadIO t, MonadCatch t)
          => NominalDiffTime -- ^ Number of seconds before refreshing cache
          -> t a             -- ^ IO action to cache
-         -> m (t a)
+         -> m (Cached t a)
 cachedIO interval = cachedIOWith (secondsPassed interval)
 
 -- | Cache an IO action, producing a version of this IO action that is cached
@@ -50,7 +56,7 @@ cachedIO' :: (MonadIO m, MonadIO t, MonadCatch t)
           => NominalDiffTime -- ^ Number of seconds before refreshing cache
           -> (Maybe (UTCTime, a) -> t a) -- ^ action to cache. The stale value and its refresh date
           -- are passed so that the action can perform external staleness checks
-          -> m (t a)
+          -> m (Cached t a)
 cachedIO' interval = cachedIOWith' (secondsPassed interval)
 
 -- | Check if @starting time@ + @seconds@ is after @end time@
@@ -70,7 +76,7 @@ cachedIOWith
     --   If 'isCacheStillFresh' 'lastUpdated' 'now' returns 'True'
     --   the cache is considered still fresh and returns the cached IO action
     -> t a -- ^ action to cache.
-    -> m (t a)
+    -> m (Cached t a)
 cachedIOWith f io = cachedIOWith' f (const io)
 
 -- | Cache an IO action, The cache begins uninitialized.
@@ -84,10 +90,10 @@ cachedIOWith'
     --   the cache is considered still fresh and returns the cached IO action
     -> (Maybe (UTCTime, a) -> t a) -- ^ action to cache. The stale value and its refresh date
     -- are passed so that the action can perform external staleness checks
-    -> m (t a)
+    -> m (Cached t a)
 cachedIOWith' isCacheStillFresh io = do
   cachedT <- liftIO (atomically (newTVar Uninitialized))
-  return $ do
+  pure . Cached $ do
     now <- liftIO getCurrentTime
     join . liftIO . atomically $ do
       cached <- readTVar cachedT
@@ -100,12 +106,12 @@ cachedIOWith' isCacheStillFresh io = do
         -- thread will get the stale data instead.
           | otherwise -> do
             writeTVar cachedT (Updating value)
-            return $ refreshCache previousState cachedT
+            pure (refreshCache previousState cachedT)
         -- Another thread is already updating the cache, just return the stale value
-        Updating value -> return (return value)
+        Updating value -> pure (pure value)
         -- The cache is uninitialized. Mark the cache as initializing to block other
         -- threads. Initialize and return.
-        Uninitialized -> return $ refreshCache Uninitialized cachedT
+        Uninitialized -> pure (refreshCache Uninitialized cachedT)
         -- The cache is uninitialized and another thread is already attempting to
         -- initialize it. Block.
         Initializing -> retry
