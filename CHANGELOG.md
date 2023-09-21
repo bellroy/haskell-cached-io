@@ -2,7 +2,23 @@
 
 ## 1.3.0.0
 
-- Caching functions previously returned `m (t a)`, but it was easy to accidentally use `join` when `m` and `t` were the same monad (eg. `IO (IO a)`), and not get any caching at all. These functions now use a `Cached` newtype for `t a` to make it harder to do this.
+- **Breaking** Caching functions previously returned `m (t a)`, but it was easy to accidentally use `join` when `m` and `t` were the same monad (eg. `IO (IO a)`), and not get any caching at all. These functions now use a `Cached` newtype for `t a` to make it more difficult to misuse.
+
+### Migrating from <=1.2.0.0 to 1.3.0.0
+
+```haskell
+-- Previous versions
+f :: IO ()
+f = do
+  cachedAction <- cachedIO action :: IO (IO a)
+  cachedResult <- cachedAction
+
+-- New version
+f :: IO ()
+f = do
+  cachedAction <- cachedIO action :: IO (Cached IO a)
+  cachedResult <- runCached cachedAction
+```
 
 ## 1.2.0.0
 

@@ -29,7 +29,7 @@ import Data.Time.Clock (NominalDiffTime, addUTCTime, getCurrentTime, UTCTime)
 
 -- | A cached IO action in some monad @m@. Use 'runCached' to extract the action when you want to query it.
 --
--- This newtype is intended to make it harder to accidentally 'Control.Monad.join' (and defeat all caching) when the fetch action and the outer monad are the same.
+-- Note that using 'Control.Monad.join' when the cached action and the outer monad are the same will ignore caching.
 newtype Cached m a = Cached {runCached :: m a}
 
 data State a  = Uninitialized | Initializing | Updating a | Fresh UTCTime a
