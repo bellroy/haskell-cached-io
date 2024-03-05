@@ -21,6 +21,7 @@
           "ghc92"
           "ghc94"
           "ghc96"
+          "ghc98"
         ];
 
         packages = builtins.listToAttrs (
