@@ -13,7 +13,7 @@ maintainer:         Bellroy Tech Team <haskell@bellroy.com>
 category:           Development
 build-type:         Simple
 tested-with:        GHC ==8.8.4 || ==8.10.7 || ==9.0.2 || ==9.2.4 || ==9.4.5 || ==9.6.2 || ==9.8.1
-extra-source-files:
+extra-doc-files:
   CHANGELOG.md
   README.md
 
@@ -30,7 +30,7 @@ library
   build-depends:
     , exceptions    >=0.10.4  && <0.11
     , stm           >=2.5     && <2.6
-    , time          >=1.9.3   && <1.13
+    , time          >=1.9.3   && <1.15
     , transformers  >=0.5.6.2 && <0.7
 
   hs-source-dirs:   src/
