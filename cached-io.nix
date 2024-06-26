@@ -1,22 +1,13 @@
-{ mkDerivation
-, lib
-, base
-, exceptions
-, stm
-, time
-, transformers
-}:
+{ mkDerivation, base, exceptions, lib, stm, time, transformers }:
 mkDerivation {
   pname = "cached-io";
-  version = "1.1.0.0";
+  version = "1.3.0.0";
   src = ./.;
-  libraryHaskellDepends = [
-    base
-    exceptions
-    stm
-    time
-    transformers
-  ];
-  description = "A simple library to cache a single IO action with timeout";
+  isLibrary = true;
+  isExecutable = true;
+  libraryHaskellDepends = [ base exceptions stm time transformers ];
+  executableHaskellDepends = [ base ];
+  description = "A simple library to cache IO actions";
   license = lib.licenses.asl20;
+  mainProgram = "test-cachedIO";
 }
