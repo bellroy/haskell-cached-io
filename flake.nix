@@ -7,12 +7,7 @@
 
   outputs = inputs:
     inputs.bellroy-nix-foss.lib.haskellProject {
-      cabalPackages = [
-        {
-          name = "cached-io";
-          path = ./cached-io.nix;
-        }
-      ];
+      src = ./.;
       supportedCompilers = [
         "ghc810"
         "ghc90"
