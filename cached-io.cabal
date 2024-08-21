@@ -12,7 +12,7 @@ author:             SumAll, Inc.
 maintainer:         Bellroy Tech Team <haskell@bellroy.com>
 category:           Development
 build-type:         Simple
-tested-with:        GHC ==8.10.7 || ==9.0.2 || ==9.2.4 || ==9.4.5 || ==9.6.4 || ==9.8.2
+tested-with:        GHC ==8.10.7 || ==9.0.2 || ==9.2.4 || ==9.4.5 || ==9.6.6 || ==9.8.2
 extra-doc-files:
   CHANGELOG.md
   README.md
