@@ -1,6 +1,7 @@
 *.*~
 .direnv
 .envrc
+.pre-commit-config.yaml
 /.cabal-sandbox
 /.stack-work
 /cabal.sandbox.config
