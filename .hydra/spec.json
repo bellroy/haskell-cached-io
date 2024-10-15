@@ -1,0 +1,14 @@
+{
+  "haskell-cached-io": {
+    "enabled": 1,
+    "hidden": false,
+    "keepnr": 1,
+    "checkinterval": 300,
+    "schedulingshares": 100,
+    "description": "Cache IO actions in Haskell",
+    "enableemail": false,
+    "emailoverride": "",
+    "type": 1,
+    "flake": "github:bellroy/haskell-cached-io"
+  }
+}
