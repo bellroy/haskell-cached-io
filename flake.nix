@@ -19,6 +19,6 @@
         "ghc910"
         "ghc912"
       ];
-      defaultCompiler = "ghc96";
+      defaultCompiler = "ghc910";
     };
 }
