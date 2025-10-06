@@ -66,3 +66,7 @@ executable test-cachedIO
 
   if flag(developer)
     ghc-options: -Werror
+
+  build-depends:
+    , tasty        ^>=1.5
+    , tasty-hunit  ^>=0.10.0.3

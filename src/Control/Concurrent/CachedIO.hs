@@ -22,8 +22,7 @@ module Control.Concurrent.CachedIO
 where
 
 import Control.Concurrent.STM
-  ( TVar,
-    atomically,
+  ( atomically,
     newTVarIO,
     readTVar,
     retry,
@@ -112,7 +111,7 @@ cachedIOWith' ::
   -- are passed so that the action can perform external staleness checks
   (Maybe (UTCTime, a) -> t a) ->
   m (Cached t a)
-cachedIOWith' isCacheStillFresh io = do
+cachedIOWith' isCacheStillFresh refreshAction = do
   cachedT <- liftIO (newTVarIO Uninitialized)
   pure . Cached $ do
     now <- liftIO getCurrentTime
@@ -132,7 +131,9 @@ cachedIOWith' isCacheStillFresh io = do
         Updating value -> pure (pure value)
         -- The cache is uninitialized. Mark the cache as initializing to block other
         -- threads. Initialize and return.
-        Uninitialized -> pure (refreshCache Uninitialized cachedT)
+        Uninitialized -> do
+          writeTVar cachedT Initializing
+          pure (refreshCache Uninitialized cachedT)
         -- The cache is uninitialized and another thread is already attempting to
         -- initialize it. Block.
         Initializing -> retry
@@ -141,10 +142,9 @@ cachedIOWith' isCacheStillFresh io = do
       let previous = case previousState of
             Fresh lastUpdated value -> Just (lastUpdated, value)
             _ -> Nothing
-      newValue <- io previous `onException` restoreState previousState cachedT
+      newValue <-
+        refreshAction previous
+          `onException` liftIO (atomically (writeTVar cachedT previousState))
       now <- liftIO getCurrentTime
       liftIO (atomically (writeTVar cachedT (Fresh now newValue)))
       liftIO (pure newValue)
-
-restoreState :: (MonadIO m) => State a -> TVar (State a) -> m ()
-restoreState previousState cachedT = liftIO (atomically (writeTVar cachedT previousState))
