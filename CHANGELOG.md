@@ -1,5 +1,9 @@
 # Revision history for cached-io
 
+## Unreleased (patch)
+
+- Correctly transition the internal state to `Initializing` when filling the cache for the first time.
+
 ## 1.3.0.0
 
 - **Breaking** Caching functions previously returned `m (t a)`, but it was easy to accidentally use `join` when `m` and `t` were the same monad (eg. `IO (IO a)`), and not get any caching at all. These functions now use a `Cached` newtype for `t a` to make it more difficult to misuse.

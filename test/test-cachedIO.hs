@@ -1,25 +1,44 @@
-module Main (
-    main
-    ) where
+module Main (main) where
 
-import Control.Concurrent.CachedIO (cachedIO, Cached(..))
-import Data.List (isInfixOf)
+import Control.Concurrent (forkIO, threadDelay)
+import Control.Concurrent.CachedIO (Cached (..), cachedIO)
+import Data.Functor (void)
+import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
+import Test.Tasty (TestTree, defaultMain, testGroup)
+import Test.Tasty.HUnit (testCase, (@?=))
 
-crawlTheInternet :: IO [String]
-crawlTheInternet = do
-    putStrLn "Scanning pages.."
-    putStrLn "Parsing HTML.."
-    putStrLn "Following links.."
-    return ["website about Haskell", "website about Ruby", "slashdot.org",
-            "The Monad.Reader", "haskellwiki"]
+tests :: TestTree
+tests =
+  testGroup
+    "Control.Concurrent.CachedIO"
+    [ testCase "Action is not called until first use" $ do
+        ref <- newIORef 0
+        Cached {} <- cachedIO (5 * 60) $ increment ref
+        count <- readIORef ref
+        count @?= 0,
+      testCase "Action is not called if value is fresh" $ do
+        ref <- newIORef 0
+        Cached action <- cachedIO (5 * 60) $ increment ref
+        action
+        action
+        count <- readIORef ref
+        count @?= 1,
+      testCase "Action is not called if cache is initializing" $ do
+        ref <- newIORef 0
+        Cached action <- cachedIO (5 * 60) $ incrementSlow ref
+        void . forkIO $ void action
+        action
+        count <- readIORef ref
+        count @?= 1
+    ]
 
-searchEngine :: String -> Cached IO [String] -> IO [String]
-searchEngine query internet = do
-    pages <- runCached internet
-    return $ filter (query `isInfixOf`) pages
+increment :: IORef Int -> IO Int
+increment ref = atomicModifyIORef' ref (\i -> (succ i, i))
+
+incrementSlow :: IORef Int -> IO Int
+incrementSlow ref = do
+  threadDelay $ 100 * 1000 -- 100 ms
+  atomicModifyIORef' ref (\i -> (succ i, i))
 
 main :: IO ()
-main = do
-    cachedInternet <- cachedIO 600 crawlTheInternet   -- 10 minute cache
-    print =<< searchEngine "Haskell" cachedInternet
-    print =<< searchEngine "C#" cachedInternet
+main = defaultMain tests
