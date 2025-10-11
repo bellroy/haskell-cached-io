@@ -1,6 +1,6 @@
 # Revision history for cached-io
 
-## Unreleased (patch)
+## 1.3.1.0
 
 - Correctly transition the internal state to `Initializing` when filling the cache for the first time.
 
