@@ -19,15 +19,15 @@ tests =
       testCase "Action is not called if value is fresh" $ do
         ref <- newIORef 0
         Cached action <- cachedIO (5 * 60) $ increment ref
-        action
-        action
+        void action
+        void action
         count <- readIORef ref
         count @?= 1,
       testCase "Action is not called if cache is initializing" $ do
         ref <- newIORef 0
         Cached action <- cachedIO (5 * 60) $ incrementSlow ref
         void . forkIO $ void action
-        action
+        void action
         count <- readIORef ref
         count @?= 1
     ]
@@ -37,8 +37,12 @@ increment ref = atomicModifyIORef' ref (\i -> (succ i, i))
 
 incrementSlow :: IORef Int -> IO Int
 incrementSlow ref = do
+  res <- atomicModifyIORef' ref (\i -> (succ i, i))
+  -- waiting AFTER the increase will show that Initialized is necessary
+  -- because forking a thread takes enough time that the "action >> readIORef"
+  -- are done before the forked thread has the chance to increment the counter.
   threadDelay $ 100 * 1000 -- 100 ms
-  atomicModifyIORef' ref (\i -> (succ i, i))
+  pure res
 
 main :: IO ()
 main = defaultMain tests
