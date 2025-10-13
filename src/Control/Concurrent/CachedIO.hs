@@ -12,18 +12,32 @@
 -- * before 10 minutes have passed, it returns the stored value.
 -- * after 10 minutes have passed, it calls @downloadData@ and stores the
 -- result again.
+-- * @downloadData@ will not be called if a different thread is already calling it.
+-- In that case, the stored value will be returned in the meantime.
 module Control.Concurrent.CachedIO
   ( Cached (..),
+
+    -- * IO
     cachedIO,
     cachedIOWith,
     cachedIO',
     cachedIOWith',
+
+    -- * STM
+    --
+    -- | The following set of actions are the same as the 'cachedIO' versions,
+    -- except that they run in the 'STM' monad.
+    cachedSTM,
+    cachedSTMWith,
+    cachedSTM',
+    cachedSTMWith',
   )
 where
 
 import Control.Concurrent.STM
-  ( atomically,
-    newTVarIO,
+  ( STM,
+    atomically,
+    newTVar,
     readTVar,
     retry,
     writeTVar,
@@ -53,7 +67,7 @@ cachedIO ::
   -- | IO action to cache
   t a ->
   m (Cached t a)
-cachedIO interval = cachedIOWith (secondsPassed interval)
+cachedIO = cachedIOWith . secondsPassed
 
 -- | Cache an IO action, producing a version of this IO action that is cached
 -- for 'interval' seconds. The cache begins uninitialized.
@@ -69,7 +83,7 @@ cachedIO' ::
   -- are passed so that the action can perform external staleness checks
   (Maybe (UTCTime, a) -> t a) ->
   m (Cached t a)
-cachedIO' interval = cachedIOWith' (secondsPassed interval)
+cachedIO' = cachedIOWith' . secondsPassed
 
 -- | Check if @starting time@ + @seconds@ is after @end time@
 secondsPassed ::
@@ -95,9 +109,9 @@ cachedIOWith ::
   -- | Action to cache.
   t a ->
   m (Cached t a)
-cachedIOWith f io = cachedIOWith' f (const io)
+cachedIOWith f = cachedIOWith' f . const
 
--- | Cache an IO action, The cache begins uninitialized.
+-- | Cache an IO action; the cache begins uninitialized.
 --
 -- The outer IO is responsible for setting up the cache. Use the inner one to
 -- either get the cached value or refresh
@@ -111,8 +125,59 @@ cachedIOWith' ::
   -- are passed so that the action can perform external staleness checks
   (Maybe (UTCTime, a) -> t a) ->
   m (Cached t a)
-cachedIOWith' isCacheStillFresh refreshAction = do
-  cachedT <- liftIO (newTVarIO Uninitialized)
+cachedIOWith' isCacheStillFresh refreshAction =
+  liftIO . atomically $ cachedSTMWith' isCacheStillFresh refreshAction
+
+----------------- STM -----------------
+
+-- | Set up a cached IO action in a transaction; producing a version of this IO
+-- action that is cached for 'interval' seconds. The cache begins uninitialized.
+cachedSTM ::
+  (MonadIO m, MonadCatch m) =>
+  -- | Number of seconds before refreshing cache
+  NominalDiffTime ->
+  -- | IO action to cache
+  m a ->
+  STM (Cached m a)
+cachedSTM = cachedSTMWith . secondsPassed
+
+-- | Set up a cached IO action in a transaction; producing a version of this IO
+-- action that is cached for 'interval' seconds. The cache begins uninitialized.
+cachedSTM' ::
+  (MonadIO m, MonadCatch m) =>
+  -- | Number of seconds before refreshing cache
+  NominalDiffTime ->
+  -- | action to cache. The stale value and its refresh date
+  -- are passed so that the action can perform external staleness checks
+  (Maybe (UTCTime, a) -> m a) ->
+  STM (Cached m a)
+cachedSTM' = cachedSTMWith' . secondsPassed
+
+-- | Set up a cached IO action in a transaction; The cache begins uninitialized.
+cachedSTMWith ::
+  (MonadIO m, MonadCatch m) =>
+  -- | Test function:
+  -- If @isCacheStillFresh lastUpdated now@ returns 'True',
+  -- the cache is considered still fresh and returns the cached IO action
+  (UTCTime -> UTCTime -> Bool) ->
+  -- | Action to cache.
+  m a ->
+  STM (Cached m a)
+cachedSTMWith f = cachedSTMWith' f . const
+
+-- | Set up a cached IO action in a transaction; the cache begins uninitialized.
+cachedSTMWith' ::
+  (MonadIO m, MonadCatch m) =>
+  -- | Test function:
+  -- If @'isCacheStillFresh' lastUpdated now@ returns 'True'
+  -- the cache is considered still fresh and returns the cached IO action
+  (UTCTime -> UTCTime -> Bool) ->
+  -- | Action to cache. The stale value and its refresh date
+  -- are passed so that the action can perform external staleness checks
+  (Maybe (UTCTime, a) -> m a) ->
+  STM (Cached m a)
+cachedSTMWith' isCacheStillFresh refreshAction = do
+  cachedT <- newTVar Uninitialized
   pure . Cached $ do
     now <- liftIO getCurrentTime
     join . liftIO . atomically $ do
@@ -145,6 +210,7 @@ cachedIOWith' isCacheStillFresh refreshAction = do
       newValue <-
         refreshAction previous
           `onException` liftIO (atomically (writeTVar cachedT previousState))
-      now <- liftIO getCurrentTime
-      liftIO (atomically (writeTVar cachedT (Fresh now newValue)))
-      liftIO (pure newValue)
+      liftIO $ do
+        now <- getCurrentTime
+        atomically (writeTVar cachedT (Fresh now newValue))
+        pure newValue
