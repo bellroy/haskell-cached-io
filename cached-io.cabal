@@ -37,9 +37,9 @@ library
   import:           deps
   exposed-modules:  Control.Concurrent.CachedIO
   build-depends:
-    , exceptions    >=0.10.4  && <0.11
-    , stm           >=2.5     && <2.6
-    , time          >=1.9.3   && <1.16
+    , exceptions  >=0.10.4 && <0.11
+    , stm         >=2.5    && <2.6
+    , time        >=1.9.3  && <1.16
 
   hs-source-dirs:   src/
   default-language: Haskell2010
@@ -53,8 +53,9 @@ flag developer
   default:     False
   description: compile with -Werror to make warnings fatal
 
-executable test-cachedIO
+test-suite test-cachedIO
   import:           deps
+  type:             exitcode-stdio-1.0
   main-is:          test-cachedIO.hs
   build-depends:    cached-io
   hs-source-dirs:   test/
