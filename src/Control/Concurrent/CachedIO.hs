@@ -11,9 +11,9 @@
 --
 -- * before 10 minutes have passed, it returns the stored value.
 -- * after 10 minutes have passed, it calls @downloadData@ and stores the
--- result again.
--- * @downloadData@ will not be called if a different thread is already calling it.
--- In that case, the stored value will be returned in the meantime.
+--   result again.
+-- * @downloadData@ will not be called if a different thread is already calling
+--   it. In that case, the stored value will be returned in the meantime.
 module Control.Concurrent.CachedIO
   ( Cached (..),
 
@@ -24,9 +24,7 @@ module Control.Concurrent.CachedIO
     cachedIOWith',
 
     -- * STM
-    --
-    -- | The following set of actions are the same as the 'cachedIO' versions,
-    -- except that they run in the 'STM' monad.
+    -- $stm
     cachedSTM,
     cachedSTMWith,
     cachedSTM',
@@ -85,17 +83,6 @@ cachedIO' ::
   m (Cached t a)
 cachedIO' = cachedIOWith' . secondsPassed
 
--- | Check if @starting time@ + @seconds@ is after @end time@
-secondsPassed ::
-  -- | Seconds
-  NominalDiffTime ->
-  -- | Start time
-  UTCTime ->
-  -- | End time
-  UTCTime ->
-  Bool
-secondsPassed interval start end = addUTCTime interval start > end
-
 -- | Cache an IO action, The cache begins uninitialized.
 --
 -- The outer IO is responsible for setting up the cache. Use the inner one to
@@ -128,7 +115,10 @@ cachedIOWith' ::
 cachedIOWith' isCacheStillFresh refreshAction =
   liftIO . atomically $ cachedSTMWith' isCacheStillFresh refreshAction
 
------------------ STM -----------------
+-- $stm
+--
+-- The following actions are the exactly same as the 'cachedIO' versions, except
+-- that they do not leave the 'STM' monad during construction.
 
 -- | Set up a cached IO action in a transaction; producing a version of this IO
 -- action that is cached for 'interval' seconds. The cache begins uninitialized.
@@ -214,3 +204,14 @@ cachedSTMWith' isCacheStillFresh refreshAction = do
         now <- getCurrentTime
         atomically (writeTVar cachedT (Fresh now newValue))
         pure newValue
+
+-- | Check if @starting time@ + @seconds@ is after @end time@
+secondsPassed ::
+  -- | Seconds
+  NominalDiffTime ->
+  -- | Start time
+  UTCTime ->
+  -- | End time
+  UTCTime ->
+  Bool
+secondsPassed interval start end = addUTCTime interval start > end
