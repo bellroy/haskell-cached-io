@@ -1,6 +1,6 @@
 cabal-version:   2.2
 name:            cached-io
-version:         1.3.0.0
+version:         1.3.1.0
 synopsis:        A simple library to cache IO actions
 description:
   Provides functions that convert an IO action into a cached one by storing the
@@ -37,10 +37,9 @@ library
   import:           deps
   exposed-modules:  Control.Concurrent.CachedIO
   build-depends:
-    , exceptions    >=0.10.4  && <0.11
-    , stm           >=2.5     && <2.6
-    , time          >=1.9.3   && <1.16
-    , transformers  >=0.5.6.2 && <0.7
+    , exceptions  >=0.10.4 && <0.11
+    , stm         >=2.5    && <2.6
+    , time        >=1.9.3  && <1.16
 
   hs-source-dirs:   src/
   default-language: Haskell2010
@@ -54,8 +53,9 @@ flag developer
   default:     False
   description: compile with -Werror to make warnings fatal
 
-executable test-cachedIO
+test-suite test-cachedIO
   import:           deps
+  type:             exitcode-stdio-1.0
   main-is:          test-cachedIO.hs
   build-depends:    cached-io
   hs-source-dirs:   test/

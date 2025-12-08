@@ -1,8 +1,10 @@
 # Revision history for cached-io
 
-## Unreleased (patch)
+## 1.3.1.0
 
+- Add `cachedSTM` versions of all bindings.
 - Correctly transition the internal state to `Initializing` when filling the cache for the first time.
+- Remove unused `transformer` dependency
 
 ## 1.3.0.0
 
