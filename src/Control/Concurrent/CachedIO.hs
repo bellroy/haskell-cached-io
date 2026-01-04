@@ -22,6 +22,7 @@ module Control.Concurrent.CachedIO
     cachedIOWith,
     cachedIO',
     cachedIOWith',
+    cachedIOWith'',
 
     -- * STM
     -- $stm
@@ -29,6 +30,7 @@ module Control.Concurrent.CachedIO
     cachedSTMWith,
     cachedSTM',
     cachedSTMWith',
+    cachedSTMWith'',
   )
 where
 
@@ -112,8 +114,25 @@ cachedIOWith' ::
   -- are passed so that the action can perform external staleness checks
   (Maybe (UTCTime, a) -> t a) ->
   m (Cached t a)
-cachedIOWith' isCacheStillFresh refreshAction =
-  liftIO . atomically $ cachedSTMWith' isCacheStillFresh refreshAction
+cachedIOWith' isCacheStillFresh = cachedIOWith'' $ \lastUpdated now _ ->
+  isCacheStillFresh lastUpdated now
+
+-- | Cache an IO action; the cache begins uninitialized.
+--
+-- The outer IO is responsible for setting up the cache. Use the inner one to
+-- either get the cached value or refresh
+cachedIOWith'' ::
+  (MonadIO m, MonadIO t, MonadCatch t) =>
+  -- | Test function:
+  -- If 'isCacheStillFresh' 'lastUpdated' 'now' 'value' returns 'True'
+  -- the cache is considered still fresh and returns the cached IO action
+  (UTCTime -> UTCTime -> a -> Bool) ->
+  -- | Action to cache. The stale value and its refresh date
+  -- are passed so that the action can perform external staleness checks
+  (Maybe (UTCTime, a) -> t a) ->
+  m (Cached t a)
+cachedIOWith'' isCacheStillFresh refreshAction =
+  liftIO . atomically $ cachedSTMWith'' isCacheStillFresh refreshAction
 
 -- $stm
 --
@@ -166,7 +185,21 @@ cachedSTMWith' ::
   -- are passed so that the action can perform external staleness checks
   (Maybe (UTCTime, a) -> m a) ->
   STM (Cached m a)
-cachedSTMWith' isCacheStillFresh refreshAction = do
+cachedSTMWith' isCacheStillFresh =
+  cachedSTMWith'' $ \lastUpdated now _ -> isCacheStillFresh lastUpdated now
+
+-- | Set up a cached IO action in a transaction; the cache begins uninitialized.
+cachedSTMWith'' ::
+  (MonadIO m, MonadCatch m) =>
+  -- | Test function:
+  -- If @'isCacheStillFresh' lastUpdated now value@ returns 'True'
+  -- the cache is considered still fresh and returns the cached IO action
+  (UTCTime -> UTCTime -> a -> Bool) ->
+  -- | Action to cache. The stale value and its refresh date
+  -- are passed so that the action can perform external staleness checks
+  (Maybe (UTCTime, a) -> m a) ->
+  STM (Cached m a)
+cachedSTMWith'' isCacheStillFresh refreshAction = do
   cachedT <- newTVar Uninitialized
   pure . Cached $ do
     now <- liftIO getCurrentTime
@@ -175,7 +208,7 @@ cachedSTMWith' isCacheStillFresh refreshAction = do
       case cached of
         previousState@(Fresh lastUpdated value)
           -- There's data in the cache and it's recent. Just return.
-          | isCacheStillFresh lastUpdated now -> pure (pure value)
+          | isCacheStillFresh lastUpdated now value -> pure (pure value)
           -- There's data in the cache, but it's stale. Update the cache state
           -- to prevent a second thread from also executing the action. The second
           -- thread will get the stale data instead.
