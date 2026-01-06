@@ -17,8 +17,7 @@
 module Control.Concurrent.CachedIO
   ( Cached (..),
     Config (..),
-    FreshnessCheck,
-    RefreshAction,
+    Timestamped,
 
     -- * IO
     cachedIO,
@@ -57,26 +56,16 @@ newtype Cached m a = Cached {runCached :: m a}
 
 data State a = Uninitialized | Initializing | Updating a | Fresh UTCTime a
 
-type FreshnessCheck a =
-  -- | When the cache was last updated.
-  UTCTime ->
-  -- | The current time.
-  UTCTime ->
-  -- | The cached value.
-  a ->
-  -- | 'False' if the cached value is considered to have expired, 'True'
-  -- otherwise.
-  Bool
-
-type RefreshAction m a =
-  -- | When the cache was last updated and the cached value, if there is a cached value.
-  Maybe (UTCTime, a) ->
-  -- | Produces a new cache value.
-  m a
+-- | A cached value and when it was cached.
+type Timestamped a = (UTCTime, a)
 
 data Config m a = Config
-  { isFresh :: FreshnessCheck a,
-    refreshAction :: RefreshAction m a
+  { -- | @isFresh now (timestamp, value)@ should return 'False' if @value@ is
+    -- considered to have expired, 'True' otherwise.
+    isFresh :: UTCTime -> Timestamped a -> Bool,
+    -- | Produces a new value. The currently-cached value is supplied if it is
+    -- available.
+    refreshAction :: Maybe (Timestamped a) -> m a
   }
 
 -- | Cache an IO action, producing a version of this IO action that is cached
@@ -142,7 +131,7 @@ cachedIOWith' ::
 cachedIOWith' isFresh' refreshAction' =
   cachedIOFromConfig
     Config
-      { isFresh = \lastUpdated now _ -> isFresh' lastUpdated now,
+      { isFresh = \now (lastUpdated, _) -> isFresh' lastUpdated now,
         refreshAction = refreshAction'
       }
 
@@ -207,7 +196,7 @@ cachedSTMWith' ::
 cachedSTMWith' isFresh' refreshAction' =
   cachedSTMFromConfig
     Config
-      { isFresh = \lastUpdated now _ -> isFresh' lastUpdated now,
+      { isFresh = \now (lastUpdated, _) -> isFresh' lastUpdated now,
         refreshAction = refreshAction'
       }
 
@@ -225,7 +214,7 @@ cachedSTMFromConfig config = do
       case cached of
         previousState@(Fresh lastUpdated value)
           -- There's data in the cache and it's recent. Just return.
-          | isFresh config lastUpdated now value -> pure (pure value)
+          | isFresh config now (lastUpdated, value) -> pure (pure value)
           -- There's data in the cache, but it's stale. Update the cache state
           -- to prevent a second thread from also executing the action. The second
           -- thread will get the stale data instead.
