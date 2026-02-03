@@ -1,5 +1,9 @@
 # Revision history for cached-io
 
+## 1.4.0.0
+
+- **Breaking** Add `Functor` instance for `Cached`.
+
 ## 1.3.1.0
 
 - Add `cachedSTM` versions of all bindings.
