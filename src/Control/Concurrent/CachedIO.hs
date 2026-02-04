@@ -1,5 +1,5 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- | Example usage:
 --
@@ -56,7 +56,7 @@ import Data.Time.Clock (NominalDiffTime, UTCTime, addUTCTime, getCurrentTime)
 --
 -- Note that using 'Control.Monad.join' when the cached action and the outer monad are the same will ignore caching.
 newtype Cached m a = Cached {runCached :: m a}
-  deriving newtype (Functor)
+  deriving stock (Functor)
 
 data State a = Uninitialized | Initializing | Updating a | Fresh UTCTime a
 

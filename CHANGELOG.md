@@ -1,8 +1,8 @@
 # Revision history for cached-io
 
-## 1.4.0.0
+## 1.3.2.0
 
-- **Breaking** Add `Functor` instance for `Cached`.
+- Add `Functor` instance for `Cached`.
 
 ## 1.3.1.0
 
