@@ -1,5 +1,10 @@
 # Revision history for cached-io
 
+## 1.4.0.0
+
+- **Breaking** All `cached...` functions now require `MonadMask`.
+- Fix cache getting stuck in `Initializing` state when monadic errors are thrown during cache initialisation and refresh.
+
 ## 1.3.2.0
 
 - Add `Functor` instance for `Cached`.
