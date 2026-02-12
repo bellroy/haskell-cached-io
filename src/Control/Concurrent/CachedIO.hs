@@ -48,7 +48,7 @@ import Control.Concurrent.STM
     writeTVar,
   )
 import Control.Monad (join)
-import Control.Monad.Catch (MonadCatch, onException)
+import Control.Monad.Catch (MonadMask, onError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Time.Clock (NominalDiffTime, UTCTime, addUTCTime, getCurrentTime)
 
@@ -79,7 +79,7 @@ data Config m a = Config
 -- either get the cached value or refresh, if the cache is older than 'interval'
 -- seconds.
 cachedIO ::
-  (MonadIO m, MonadIO t, MonadCatch t) =>
+  (MonadIO m, MonadIO t, MonadMask t) =>
   -- | Number of seconds before refreshing cache
   NominalDiffTime ->
   -- | IO action to cache
@@ -94,7 +94,7 @@ cachedIO = cachedIOWith . secondsPassed
 -- either get the cached value or refresh, if the cache is older than 'interval'
 -- seconds.
 cachedIO' ::
-  (MonadIO m, MonadIO t, MonadCatch t) =>
+  (MonadIO m, MonadIO t, MonadMask t) =>
   -- | Number of seconds before refreshing cache
   NominalDiffTime ->
   -- | action to cache. The stale value and its refresh date
@@ -108,7 +108,7 @@ cachedIO' = cachedIOWith' . secondsPassed
 -- The outer IO is responsible for setting up the cache. Use the inner one to
 -- either get the cached value or refresh
 cachedIOWith ::
-  (MonadIO m, MonadIO t, MonadCatch t) =>
+  (MonadIO m, MonadIO t, MonadMask t) =>
   -- | Test function:
   -- If @isCacheStillFresh lastUpdated now@ returns 'True',
   -- the cache is considered still fresh and returns the cached IO action
@@ -123,7 +123,7 @@ cachedIOWith f = cachedIOWith' f . const
 -- The outer IO is responsible for setting up the cache. Use the inner one to
 -- either get the cached value or refresh
 cachedIOWith' ::
-  (MonadIO m, MonadIO t, MonadCatch t) =>
+  (MonadIO m, MonadIO t, MonadMask t) =>
   -- | Test function:
   -- If @isCacheStillFresh lastUpdated now@ returns 'True'
   -- the cache is considered still fresh and returns the cached IO action
@@ -143,7 +143,7 @@ cachedIOWith' isFresh' refreshAction' =
 --
 -- The outer IO is responsible for setting up the cache. Use the inner one to
 -- either get the cached value or refresh
-cachedIOFromConfig :: (MonadIO m, MonadIO t, MonadCatch t) => Config t a -> m (Cached t a)
+cachedIOFromConfig :: (MonadIO m, MonadIO t, MonadMask t) => Config t a -> m (Cached t a)
 cachedIOFromConfig = liftIO . atomically . cachedSTMFromConfig
 
 -- $stm
@@ -154,7 +154,7 @@ cachedIOFromConfig = liftIO . atomically . cachedSTMFromConfig
 -- | Set up a cached IO action in a transaction; producing a version of this IO
 -- action that is cached for 'interval' seconds. The cache begins uninitialized.
 cachedSTM ::
-  (MonadIO m, MonadCatch m) =>
+  (MonadIO m, MonadMask m) =>
   -- | Number of seconds before refreshing cache
   NominalDiffTime ->
   -- | IO action to cache
@@ -165,7 +165,7 @@ cachedSTM = cachedSTMWith . secondsPassed
 -- | Set up a cached IO action in a transaction; producing a version of this IO
 -- action that is cached for 'interval' seconds. The cache begins uninitialized.
 cachedSTM' ::
-  (MonadIO m, MonadCatch m) =>
+  (MonadIO m, MonadMask m) =>
   -- | Number of seconds before refreshing cache
   NominalDiffTime ->
   -- | action to cache. The stale value and its refresh date
@@ -176,7 +176,7 @@ cachedSTM' = cachedSTMWith' . secondsPassed
 
 -- | Set up a cached IO action in a transaction; The cache begins uninitialized.
 cachedSTMWith ::
-  (MonadIO m, MonadCatch m) =>
+  (MonadIO m, MonadMask m) =>
   -- | Test function:
   -- If @isCacheStillFresh lastUpdated now@ returns 'True',
   -- the cache is considered still fresh and returns the cached IO action
@@ -188,7 +188,7 @@ cachedSTMWith f = cachedSTMWith' f . const
 
 -- | Set up a cached IO action in a transaction; the cache begins uninitialized.
 cachedSTMWith' ::
-  (MonadIO m, MonadCatch m) =>
+  (MonadIO m, MonadMask m) =>
   -- | Test function:
   -- If @isCacheStillFresh lastUpdated now@ returns 'True'
   -- the cache is considered still fresh and returns the cached IO action
@@ -206,7 +206,7 @@ cachedSTMWith' isFresh' refreshAction' =
 
 -- | Set up a cached IO action in a transaction; the cache begins uninitialized.
 cachedSTMFromConfig ::
-  (MonadIO m, MonadCatch m) =>
+  (MonadIO m, MonadMask m) =>
   Config m a ->
   STM (Cached m a)
 cachedSTMFromConfig config = do
@@ -242,7 +242,7 @@ cachedSTMFromConfig config = do
             _ -> Nothing
       newValue <-
         refreshAction config previous
-          `onException` liftIO (atomically (writeTVar cachedT previousState))
+          `onError` liftIO (atomically (writeTVar cachedT previousState))
       liftIO $ do
         now <- getCurrentTime
         atomically (writeTVar cachedT (Fresh now newValue))

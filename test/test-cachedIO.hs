@@ -2,6 +2,7 @@ module Main (main) where
 
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.CachedIO (Cached (..), cachedIO)
+import Control.Monad.Trans.Except (ExceptT (..), runExceptT, throwE)
 import Data.Functor (void)
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Test.Tasty (TestTree, defaultMain, testGroup)
@@ -29,7 +30,17 @@ tests =
         void . forkIO $ void action
         void action
         count <- readIORef ref
-        count @?= 1
+        count @?= 1,
+      testCase "Cache resets when ExceptT action fails via throwError" $ do
+        -- This hangs indefinitely if we do not handle monadic exceptions.
+        ref <- newIORef 0
+        Cached action <- cachedIO (5 * 60) $ ExceptT (pure <$> increment ref) <* throwE ()
+        result1 <- runExceptT action
+        result1 @?= Left ()
+        result2 <- runExceptT action
+        result2 @?= Left ()
+        count <- readIORef ref
+        count @?= 2
     ]
 
 increment :: IORef Int -> IO Int
