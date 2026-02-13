@@ -6,7 +6,7 @@
   running the refresh action. This was required to support the following bug
   fix.
 - Fix a subtle bug: if you used a monad with explicit early-exit semantics like
-  `MaybeT` or `ExceptT`, and your cached action uses this to exit early, the
+  `MaybeT m` or `ExceptT e m`, and your cached action uses this to exit early, the
   cache would get stuck in `Initializing` state and subsequent requests for the
   cached data would hang forever waiting for initialisation to complete.
 
