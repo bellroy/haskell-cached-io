@@ -2,6 +2,7 @@ module Main (main) where
 
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.CachedIO (Cached (..), cachedIO)
+import Control.Monad.Trans.Except (ExceptT (..), runExceptT, throwE)
 import Data.Functor (void)
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Test.Tasty (TestTree, defaultMain, testGroup)
@@ -29,7 +30,15 @@ tests =
         void . forkIO $ void action
         void action
         count <- readIORef ref
-        count @?= 1
+        count @?= 1,
+      testCase "Cache resets when ExceptT action fails via throwError" $ do
+        Cached action <- cachedIO (5 * 60) (throwE () :: ExceptT () IO ())
+        result1 <- runExceptT action
+        result1 @?= Left ()
+        -- If we do not handle the throwE correctly this will hang because the
+        -- cache is waiting to finish initialising.
+        result2 <- runExceptT action
+        result2 @?= Left ()
     ]
 
 increment :: IORef Int -> IO Int
