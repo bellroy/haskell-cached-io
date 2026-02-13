@@ -2,8 +2,13 @@
 
 ## 1.4.0.0
 
-- **Breaking** All `cached...` functions now require `MonadMask`.
-- Fix cache getting stuck in `Initializing` state when monadic errors are thrown during cache initialisation and refresh.
+- **Breaking** All `cached...` functions now require `MonadMask` for the monad
+  running the refresh action. This was required to support the following bug
+  fix.
+- Fix a subtle bug: if you used a monad with explicit early-exit semantics like
+  `MaybeT` or `ExceptT`, and your cached action uses this to exit early, the
+  cache would get stuck in `Initializing` state and subsequent requests for the
+  cached data would hang forever waiting for initialisation to complete.
 
 ## 1.3.2.0
 
