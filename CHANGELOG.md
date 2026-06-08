@@ -13,6 +13,9 @@
 ## 1.3.2.0
 
 - Add `Functor` instance for `Cached`.
+- Add `cachedIOFromConfig` and `cachedSTMFromConfig` (and a supporting `Config`
+  type), which let the freshness check inspect the cached value in addition to
+  its timestamp.
 
 ## 1.3.1.0
 
