@@ -21,6 +21,7 @@ tested-with:
    || ==9.8.2
    || ==9.10.1
    || ==9.12.1
+   || ==9.14.1
 
 extra-doc-files:
   CHANGELOG.md
@@ -31,7 +32,7 @@ source-repository head
   location: https://github.com/bellroy/haskell-cached-io.git
 
 common deps
-  build-depends: base >=4.13.0.0 && <4.22
+  build-depends: base >=4.13.0.0 && <4.23
 
 library
   import:           deps
