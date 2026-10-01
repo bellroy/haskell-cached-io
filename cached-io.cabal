@@ -13,7 +13,7 @@ maintainer: Bellroy Tech Team <haskell@bellroy.com>
 category: Development
 build-type: Simple
 tested-with:
-  ghc ==8.10.7 || ==9.0.2 || ==9.2.4 || ==9.4.5 || ==9.6.6 || ==9.10.1 || ==9.12.1 || ==9.14.1
+  ghc ==8.10.7 || ==9.0.2 || ==9.4.5 || ==9.6.6 || ==9.10.1 || ==9.12.1 || ==9.14.1
 
 extra-doc-files:
   CHANGELOG.md
